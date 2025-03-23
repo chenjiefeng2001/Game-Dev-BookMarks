@@ -4,21 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "76456b214f3d2a18",
+        "id": "216c6a2985f99700",
         "type": "tabs",
         "children": [
           {
-            "id": "6172820d125c9677",
+            "id": "aae275bcd235a4fb",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "未命名 9.md",
+                "file": "Advanced Methods in Computer Graphics  With examples in OpenGL.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "未命名 9"
+              "title": "Advanced Methods in Computer Graphics  With examples in OpenGL"
             }
           }
         ],
@@ -79,7 +79,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 298.5
+    "width": 720.5
   },
   "right": {
     "id": "3de26f6c81d591e1",
@@ -95,7 +95,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "ShaderX2 Shader Programming Tips and Tricks with DirectX 9.md",
+                "file": "Advanced Methods in Computer Graphics  With examples in OpenGL.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -105,7 +105,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "ShaderX2 Shader Programming Tips and Tricks with DirectX 9 的反向链接列表"
+              "title": "Advanced Methods in Computer Graphics  With examples in OpenGL 的反向链接列表"
             }
           },
           {
@@ -151,13 +151,23 @@
               "icon": "lucide-list",
               "title": "ShaderX2 Shader Programming Tips and Tricks with DirectX 9 的大纲"
             }
+          },
+          {
+            "id": "d787a37a2752180d",
+            "type": "leaf",
+            "state": {
+              "type": "git-view",
+              "state": {},
+              "icon": "git-pull-request",
+              "title": "Source Control"
+            }
           }
-        ]
+        ],
+        "currentTab": 4
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -166,36 +176,37 @@
       "canvas:新建白板": false,
       "daily-notes:打开/创建今天的日记": false,
       "templates:插入模板": false,
-      "command-palette:打开命令面板": false
+      "command-palette:打开命令面板": false,
+      "obsidian-git:Open Git source control": false
     }
   },
-  "active": "6172820d125c9677",
+  "active": "aae275bcd235a4fb",
   "lastOpenFiles": [
-    "Game Audio Implementation a Practical Guide Using the Unreal Engine.md",
-    "Developing 2D Game with Unity Independent Game Programming with C++.md",
-    "Creating Games with Unity Substance Painter.md",
-    "未命名 9.md",
-    "Computer Graphics Programming in OpenGL with C++.md",
+    "未命名 24.md",
+    "Advanced Methods in Computer Graphics  With examples in OpenGL.md",
+    "Unity in Action Multiplatform Game Development in C++.md",
+    "Unity Game Optimization.md",
+    "Unity Game DEvelopment Scripting.md",
+    "Unity Game Development Blueprints.md",
+    "Unity 2020 Mobile Game Development.md",
+    "Twenty Lectures on  Algorithmic Game Theory.md",
+    "Storytelling for Interactive Digital Media and Video Game.md",
+    "SDL Game Development Discover how to Leverage The Power of SDL 2.0 to Create Awesome Games in C++.md",
+    "Science Fiction Video Games.md",
+    "Real-Time Rendering 4th.md",
+    "Real-Time Rendering.md",
+    "Real-Time Graphics Rendering Engine.md",
+    "Real-Time 3D Rendering with DirectX and HLSL,  A Partical Guide to Graphics Programming.md",
+    "Ray Tracing Gems II Next Generation Real-Time Rendering with DXR, Vulkan, and OptiX.md",
+    "Ray Tracing Gems High-Quality and Real-Time Rendering with DXR and Other APIs.md",
+    "Practical Rust Projects Building Game, Physical Computing, and Machine Learning Applications.md",
+    "Practical Rendering and Computation with DirectX 3D 11.md",
+    "Physically Based Rendering From Theory to Implementation.md",
+    "OpenGL Superbible Comprehensive Tutorial and References.md",
+    "Music in the Role-Playing Game; Heros & Harmonies.md",
     "屠龙记——创造游戏世界的艺术.md",
-    "C++ Game Development By Example.md",
-    "Building a Game with Unity and Blender Learn how to build a comphics software that give life to your ideas.md",
-    "Beginning Game Development with Godot Learn to Create and Publish Your First 2D Platform Game.md",
-    "bBeginning DirectX 11 Game Programming.md",
-    "Basic of Game Desgin.md",
-    "未命名 13.md",
-    "未命名 12.md",
-    "未命名 11.md",
-    "未命名 10.md",
-    "3D Graphics Rendering Cookbook.md",
-    "3D Game Engine Programming.md",
-    "3D Game Engine Architecture Engineering Real-Time Applications with Wild Magic.md",
-    "全景探秘游戏设计艺术.md",
-    "Ray Tracing in One Week.md",
-    "Ray Tracing Gems—— High-Quality and Real-time Rendering.md",
-    "ShaderX2 Shader Programming Tips and Tricks with DirectX 9.md",
-    "ShaderX3  Advanced Rendering with DIrectX and OpenGL.md",
-    "计算机图形学 几何体数据结构.md",
-    "ShaderX4 Advanced Rendering Techniques.md",
-    "ShaderX6 Advanced Rendering Techniques.md"
+    "Multi-Threaded Game Engine Design.md",
+    "MDA A Formal Approach to Game Design and Game Research.md",
+    "Learning C Sharp by Developing Games with Unity 2021.md"
   ]
 }
