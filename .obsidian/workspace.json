@@ -75,12 +75,12 @@
               "title": "书签"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
-    "width": 308.5
+    "width": 308.5,
+    "collapsed": true
   },
   "right": {
     "id": "3de26f6c81d591e1",
@@ -96,7 +96,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "ShaderX2 Shader Programming Tips and Tricks with DirectX 9.md",
+                "file": "Game Engine Architecture解读.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -106,7 +106,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "ShaderX2 Shader Programming Tips and Tricks with DirectX 9 的反向链接列表"
+              "title": "Game Engine Architecture解读 的反向链接列表"
             }
           },
           {
@@ -115,12 +115,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "ShaderX2 Shader Programming Tips and Tricks with DirectX 9.md",
+                "file": "Game Engine Architecture解读.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "ShaderX2 Shader Programming Tips and Tricks with DirectX 9 的出链列表"
+              "title": "Game Engine Architecture解读 的出链列表"
             }
           },
           {
@@ -130,7 +130,7 @@
               "type": "tag",
               "state": {
                 "sortOrder": "frequency",
-                "useHierarchy": true,
+                "useHierarchy": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
@@ -144,13 +144,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "ShaderX2 Shader Programming Tips and Tricks with DirectX 9.md",
+                "file": "Game Engine Architecture解读.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "ShaderX2 Shader Programming Tips and Tricks with DirectX 9 的大纲"
+              "title": "Game Engine Architecture解读 的大纲"
             }
           },
           {
