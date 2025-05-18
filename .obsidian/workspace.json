@@ -183,7 +183,9 @@
   },
   "active": "48d46473e250ef23",
   "lastOpenFiles": [
+    "未命名.md",
     "Game Engine Architecture解读.md",
+    "内存布局图绘制方法.md",
     "DEEP LEARNING深度学习.md",
     "TCPIP Illustrated.md",
     "全景探秘游戏设计艺术.md",
@@ -210,8 +212,6 @@
     "SDL Game Development Discover how to Leverage The Power of SDL 2.0 to Create Awesome Games in C++.md",
     "Science Fiction Video Games.md",
     "Real-Time Rendering 4th.md",
-    "Real-Time Rendering.md",
-    "Real-Time Graphics Rendering Engine.md",
-    "Real-Time 3D Rendering with DirectX and HLSL,  A Partical Guide to Graphics Programming.md"
+    "Real-Time Rendering.md"
   ]
 }
