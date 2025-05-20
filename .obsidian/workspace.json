@@ -4,21 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "632240ccd1a297a0",
+        "id": "82a764bfa99f1f8f",
         "type": "tabs",
         "children": [
           {
-            "id": "48d46473e250ef23",
+            "id": "13d22bf51ba83c33",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Game Engine Architecture解读.md",
+                "file": "Game Programming Gems 2.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Game Engine Architecture解读"
+              "title": "Game Programming Gems 2"
             }
           }
         ],
@@ -54,7 +54,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "Game Engine Arc",
+                "query": "",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -181,10 +181,11 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "48d46473e250ef23",
+  "active": "13d22bf51ba83c33",
   "lastOpenFiles": [
-    "未命名.md",
     "Game Engine Architecture解读.md",
+    "Are we out of memory.md",
+    "未命名.md",
     "内存布局图绘制方法.md",
     "DEEP LEARNING深度学习.md",
     "TCPIP Illustrated.md",
@@ -211,7 +212,6 @@
     "Storytelling for Interactive Digital Media and Video Game.md",
     "SDL Game Development Discover how to Leverage The Power of SDL 2.0 to Create Awesome Games in C++.md",
     "Science Fiction Video Games.md",
-    "Real-Time Rendering 4th.md",
-    "Real-Time Rendering.md"
+    "Real-Time Rendering 4th.md"
   ]
 }
