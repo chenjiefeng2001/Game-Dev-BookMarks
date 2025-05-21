@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "82a764bfa99f1f8f",
+        "id": "970b3d74f5128286",
         "type": "tabs",
         "children": [
           {
-            "id": "13d22bf51ba83c33",
+            "id": "2bd8aecb72a2d3d5",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -181,8 +181,11 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "d787a37a2752180d",
+  "active": "2bd8aecb72a2d3d5",
   "lastOpenFiles": [
+    "Game Programming Gems 2.md",
+    "未命名 1.md",
+    "未命名 2.md",
     "Game Engine Architecture解读.md",
     "Are we out of memory.md",
     "未命名.md",
@@ -209,9 +212,6 @@
     "Unity Game Development Blueprints.md",
     "Unity 2020 Mobile Game Development.md",
     "Twenty Lectures on  Algorithmic Game Theory.md",
-    "Storytelling for Interactive Digital Media and Video Game.md",
-    "SDL Game Development Discover how to Leverage The Power of SDL 2.0 to Create Awesome Games in C++.md",
-    "Science Fiction Video Games.md",
-    "Real-Time Rendering 4th.md"
+    "Storytelling for Interactive Digital Media and Video Game.md"
   ]
 }
