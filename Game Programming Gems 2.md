@@ -2,7 +2,7 @@
 
 ## 1 Optimization for C++ Games 
 > **Author:** Andrew Kirmse, LucasArts Entertainments
-
+>
 > Contact: ark@alum.mit.edu
 
 这个技巧描述了你可以用来加速游戏的技术。它假设你已经确信使用 C++的好处，并且熟悉优化的基本原则（这些可以在“进一步探索”中找到）。值得重复的一个总原则是***分析（profiling）的绝对重要性***。在没有分析的情况下，程序员往往会犯两种类型的错误。
@@ -208,6 +208,7 @@ C++ 的一些特性，如初始化列表和前置自增，通常会提高性能�
 
 ## Inline Functions Versus Macros
 > **Author**:Peter Dalton, Evans & Sutherland
+> 
 > Contact: pdalton@xmission.com
 
 本篇主要讨论了
@@ -296,7 +297,8 @@ forceinline 关键字指示编译器始终内联该函数。尽管使用了这�
 
 
 ## Protect Yourself from DLL Hell and Missing OS Functions
-> Author: Herb Marselas, Ensemble Studios
+> Author: Herb Marselas, Ensemble Studios 
+> 
 > Contact: hmarselas@ensemblestudios.com
 
 动态链接库（DLL）是 Microsoft Windows 的一个强大功能。它们有很多用途，包括共享可执行代码和抽象设备差异。
@@ -381,5 +383,82 @@ if (FAILED(hr))
 
 ## Dynamic Type Information
 > Author : Scott Wakeling, Virgin Interactive
+>
 > Contact: scott@chronicreality.com
+> 
 
+这个技巧讨论了通过提供查询它们与其他类型关系的方法，或访问它们类型在运行时的信息来进行有效管理类型。在技巧的末尾，提出了一种支持持久对象的方法，并提供了一些关于如何扩展该方法的想法。
+
+### 介绍动态类型信息类
+为了有效地利用我们的类型的强大功能，我们将转向一个特定类的帮助：**动态类型信息（DTI）类**。*这个类将存储我们可能需要的关于任何给定对象或结构的类型的信息*。这里给出了该类的最小实现：
+```C++
+class dtiClass
+{
+	private:
+		char* szName;
+		dtiClass* pdtParent;
+	public:
+		dtiClass();
+		dtiClass(chaR* szSetName, dtiClass *pSetParent);
+		virtual -dtiClass();
+		const char* GetName();
+		bool SetName(char* szSetName);
+		dtiClass* GetParent();
+		bool SetParent(dtiClass* pSetParent);
+};
+```
+
+为了将 DTI 集成到我们的引擎中，我们所有的类都需要一个名为 `dtiClass` 的静态成员。正是这个类允许我们为了调试目的访问类名，并查询类父级的 `dtiClass` 成员。这个成员必须贯穿整个类树，从根类一直向下，从而确保所有游戏对象都能访问到关于自身及其父级的信息。`dtiClass` 的实现可以在随附的 CD 光盘中的代码中找到。
+
+### 暴露和查询DTI
+通过实现之前描述的非常简单的类树。这里是一个代码片段，展示了一个帮助我们定义静态 `dtiClass` 成员、一个基本的根类以及类类型信息的简单初始化的宏：
+```C++
+#define EXPOSE_TYPE \
+	public: \
+		static dtiClass Type;
+class CRootClass
+{
+	public:
+		EXPOSE_TYPE;
+		CRootClass() {};
+		virtual -CRootClass() {};
+};
+dtiClass CRootClass::Type( "CRootClass", NULL )
+```
+
+我们传递类名和指向类父级的 dtiClass 成员的指针。dtiClass 构造函数会做其余的工作，相应地设置 szName 和 pdtiParent 成员。
+现在我们可以查询对象在运行时的类名，用于调试或其他与类型相关的用例，例如**保存或加载游戏**。
+```C++
+// Let's see what kind of object this pointer is pointing to
+const char* szGetName = pSomePtr->Type.GetName();
+```
+
+### 继承意味着"IsA"
+面向对象给了我们继承的力量。随着继承而来的是多态性，即**所有对象在任何时候都可以是多种类型中的一种的能力**。
+在许多情况下，多态性被用于游戏编程中，以安全、动态和有效的方式处理多种类型的对象。这意味着我们希望在将它们强制转换为兼容类型之前确保对象是兼容的，从而防止未定义行为。这也意味着我们希望能够在运行时检查对象符合哪种类型，而不是在编译时就需要知道，并且我们希望所有这些操作都能够快速轻松地完成。
+
+### 处理通用对象
+
+作为我们运行时类型信息解决方案的一部分，我们拥有 IsA 和 SafeCast 例程，可以查询对象的通用类型，并安全地将它向上转换到类树。这通常被称为***向上转型***，它使我们能够以快速、安全且通用的方式处理大量游戏对象。问题的另一半是**向下转型**——*将指向通用基类的指针安全地转换为更专门的子类。如果我们想迭代一个根类指针列表，并检查每个指针是否真的指向特定类型的子类，我们需要使用 C++引入的动态转换运算符*。
+
+动态转换运算符用于在多态类型之间进行转换，它既安全又具有信息性。它甚至可以返回有关尝试转换的适用反馈。它采用以下形式：
+```C++
+dynamic_cast<type_id>(expression)
+```
+我们必须传入的第一个参数是在强制转换之后，我们希望表达式符合的类型。这可以是我们类的一个指针或引用。如果是指针，传入的表达式参数也必须是指针。如果我们传入一个类的引用，那么在第二个参数中，我们必须传入一个可修改的左值。这里有两个例子：
+```C++
+//给定一个根对象，一个指针，我们可以这样进行向下转型
+CChildClass *pCHild = dynamic_cast<CChildClass*>(pRoot)；
+CChildClass *pCHild = dynamic_cast<CChildClass*>(RootObj)；
+```
+
+要获得这些扩展转换操作符的访问权限，我们需要在编译器设置中启用嵌入式运行时类型信息（对于 Microsoft Visual C++，使用/GR 开关）。如果请求的转换无法进行（例如，如果根指针实际上并没有指向一个更派生的对象），操作符将简单地失败，表达式将评估为 NULL。
+在前面的代码片段中，如果`pChild `会被评估为`NULL`，且`pRoot`真的只会指向一个`CRootClass`对象。
+`dynamic_cast` 运算符让我们能够确定指针后面真正隐藏的类型。给定一个通用的 CRobot 指针列表，我们可以遍历这些指针并对每个进行 dynamic cast，检查哪些成功，哪些解析为 NULL，从而确定哪些实际上是机械的。最后，我们现在可以安全地进行向下转型，这也完成了我们的运行时类型信息解决方案。
+
+### 实现持久型类型信息
+
+## A Property Class for Generic C++ Member Access
+> Author: Charles Cafrelli
+>
+>Contact: skywise@iquest.net
