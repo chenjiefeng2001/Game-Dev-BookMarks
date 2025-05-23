@@ -520,6 +520,123 @@ Instead use NewFunctionA().
 随着游戏编程的复杂性增加，对资源的管理是十分重要的，内存管理器正是在这里发挥作用的地方。通过创建几个简单的内存管理例程，我们将能够跟踪所有动态分配的内存，并引导程序实现最佳内存使用。我们的目标是确保合理的内存占用，通过报告内存泄漏、跟踪实际使用的已分配内存百分比，并提醒程序员边界违规。我们还将确保与内存管理器的接口无缝衔接，这意味着它不需要任何显式的函数调用或类声明。我们应该能够将这段代码通过包含头文件轻松地插入到任何其他模块中，并让其他一切都顺利运行。
 创建内存管理器的缺点包括内存管理器分配内存、释放内存以及查询内存以获取统计信息所需的时间开销。因此，这并不是我们希望在游戏最终构建中启用的选项。为了避免这些陷阱，我们将仅在调试构建期间启用内存管理器，或者当符号 `ACTIVATE_MEMORY_MANAGER` 被定义时启用。
 
+### 入门
+
+内存管理器的核心在于***重载标准的 `new` 和 `delete` 运算符***，以及使用`#define` 来创建一些宏，这些宏使我们能够插入我们自己的
+使用自己的内存分配和释放例程，我们将能够用我们自己的内存跟踪模块替换标准例程。这些例程将记录内存分配请求所在的文件和行号，以及统计信息。
+
+ 第一步是**创建重载的 new 和 delete 运算符**。如前所述，我们希望记录请求内存分配的文件和行号。当尝试解决内存泄漏时，这些信息将变得无价，因为我们将能够追踪内存分配到其根源。以下是一个代码示例：
+```C++
+inline void * operator new(size_t size, const char *file, int line);
+inline void* opterator new[](size_t size,const char *file,int line);
+inline void operator delete(void *address);
+inline void operator delete[](void *address);
+```
+需要注意的是，新的 `new` 和 `delete` 操作符的标准版本和数组版本都需要重载以确保正常功能。**虽然这些声明看起来并不复杂，但目前我们面临的问题是获取所有将使用内存管理器的例程，以便无缝地将额外的参数传递给 new 操作符。**这就是#define 指令发挥作用的地方。
+```C++
+#define new new( FILE , LINE )
+tfdefine delete setOwner(_FILE_,_LINE_) .false ? setOwner("",0)
+: delete
+#define malloc(sz) AllocateMemory(_FILE_,_LINE_,sz,MM_MALLOC)
+tfdefine calloc(num,sz)
+AllocateMemory(_FILE_1_LINE_,sz*num,MM_CALLOC)
+#define realloc(ptr,sz) AllocateMemory( FILE , LINE , sz,
+MM_REALLOC, ptr )
+tfdefine free(sz) deAllocateMemory( FILE , LINE , sz,
+MM_FREE )
+```
+`#define new` 语句将替换所有`new` 调用，使用我们自定义的 new，它不仅接受分配请求的大小作为参数，还接受用于跟踪的文件和行号。Microsoft 的 Visual C++ 编译器提供了一套预定义宏，其中包括我们所需的 `__FILE__` 和` __LINE__ `符号 [MSDN]。`#define delete` 宏与 `#define new` 宏略有不同。无法在不创建语法问题的情况下向重载的 `delete `操作符传递额外参数。相反，`setOwnerQ` 方法记录文件和行号以供后续使用。请注意，创建宏作为条件也很重要，以避免与多行宏相关联的常见问题 [DaltonOl]。最后，为了完整，我们还替换了 mallocQ、callocQ、reallocQ 和 freeO 方法，使用我们自己的内存分配和释放例程。
+
+### 内存管理器日志记录
+现在我们已经提供了替换标准内存分配例程的必要框架，我们可以开始记录日志。正如本技巧开头所述，*我们将专注于内存泄漏、边界违规以及实际内存需求*。为了记录所有所需信息，我们首先需要选择一个数据结构来存储与内存分配相关的信息。为了高效和速度，我们将使用链式哈希表。每个哈希表条目将包含以下信息：
+```C++
+struct MemoryNode
+{
+	size_t actualSize;
+	size_t reportedSize;
+	void *actualAddress;
+	void *reportedAddress;
+	char sourceFile[30];
+	unsigned short sourceLine;
+	unsigned short paddingSize;
+	char options;
+	long predefinedBody;
+	ALLOC_TYPE allocationType;
+	MemoryNode *next, *prev;
+}
+```
+这个结构体包含了不仅为用户分配的内存大小，还包括为分配的内存块开头和结尾添加的填充大小。*我们还记录了分配的类型，以防止分配/释放不匹配的情况*。
+此时，我们应当已经拥有所有必要的信息来判断程序中是否存在内存泄漏。通过在 `AllocateMemoryO`例程中创建一个 `MemoryNode `并将其插入哈希表中，我们将记录所有已分配内存的历史。然后，通过在 `deAllocateMemoryO`例程中移除 `MemoryNode`，我们将确保哈希表仅包含当前已分配内存的列表。如果程序退出时哈希表中仍有条目残留，则发生了内存泄漏。此时，可以通过查询 `MemoryNode` 向用户报告内存泄漏的详细信息。如前所述，在 `deAllocateMemoryO` 例程中，我们还将验证该方法用于分配内存的方式必须与释放内存的方式相匹配；如果不匹配，我们将注意到潜在的内存泄漏。
+接下来，让我们收集与边界违规相关的信息。边界违规发生在应用程序超出为其分配的内存时。这种情况最常发生在访问数组信息的循环中。例如，如果我们分配了一个大小为 10 的数组，而我们访问了数组位置 11，我们就会超出数组边界，并覆盖或访问不属于我们的信息。为了防止这个问题，我们将为分配的内存前后提供填充。因此，如果例程请求 5 个字节，`AllocateMemoryO`例程实际上会分配`(5 + sizeof(long long) * 2 * paddmgSize)`字节。请注意，我们使用 long 类型作为填充，因为它们被定义为 32 位整数。接下来，我们必须将填充初始化为一个预定义的值，例如 `0xDEADCODE`。然后，在释放内存时，如果我们检查填充并发现任何值不是预定义的值，我们就知道发生了边界违规。此时，我们会查询相应的 `MemoryNode` 并向用户报告边界违规。
+剩下的唯一信息是需要收集程序的内存实际需求。我们想知道分配了多少内存，分配的内存中有多少实际被使用，或许还需要峰值内存分配信息。为了收集这些信息，我们需要另一个容器。既然我们已经有了所有统计信息，现在让我们来讨论如何向用户报告这些信息。CD 中包含的实现将所有信息记录到日志文件中。一旦用户启用了内存管理器并运行了程序，在程序终止时就会生成一个日志文件，其中包含所有内存泄漏、边界违规以及最终的统计报告。
+剩下的唯一问题是：***我们如何知道程序何时终止，以便我们可以输出日志信息***?一个简单的解决方案是要求程序员在程序终止时显式调用 dumpLogReport()例程。然而，这违背了创建无缝接口的要求。为了在不使用显式函数调用的方式下确定程序何时终止，我们将使用一个静态类实例
+```C++
+class Initialize
+{ 
+	public: Initialize() 
+		{ InitializeMemoryManager(); } 
+};
+static Initialize InitMemoryManager;
+bool InitializeMemoryManager() {
+static bool hasBeenlnitialized = false;
+if (sjnanager) 
+	return true;
+else if (hasBeenlnitialized) 
+	return false;
+else {
+s_manager = (MemoryManager*)malloc(sizeof(MemoryManager));
+s_manager->intialize();
+atexit( releaseMemoryManager );
+hasBeenlntialized = true;
+return true;
+}
+}
+void releaseMemoryManager() {
+NumAllocations = sjnanager->m_numAllocations;
+s_manager->release(); // Releases the hash table and calls
+free( sjnanager ); // the dumpLogReport() method
+sjnanager = NULL;
+}
+```
+我们当前的问题是**确保内存管理器是第一个被创建的对象，也是最后一个被释放的对象**。由于静态定义的对象处理顺序，这可能很困难。例如，如果我们创建了一个静态对象，它在构造函数中分配了动态内存，而内存管理器对象尚未被分配，那么内存管理器将无法用于内存跟踪。同样，如果我们使用 ::atexit() 方法调用负责释放已分配内存的函数，内存管理器对象将在 ::atexit() 方法被调用之前被释放，从而导致虚假的内存泄漏。
+改进方法：
+1. 首先，通过在内存管理器的头文件中创建 InitMemoryManager 对象，可以保证它在任何静态对象声明之前被遇到。
+***只要我们在任何静态定义之前包含那个内存管理器头文件，这一点就成立。***
+2. 其次，为了确保内存管理器始终可用，我们将调用 `InitializeMemo`在 A`llocateMemoryO` 和 `DeallocateMemoryQ `中每次调用 `ryManager()`例程，确保内存管理器处于活动状态
+3. 最后，为了确保内存管理器是最后一个被释放的对象，我们将使用 `::atexit()` 方法。`::atexit()` 方法通过以与传递给方法的顺序相反的顺序调用指定的函数来工作。
+> 因此，对内存管理器唯一的要求是**它是第一个调用 ::atexit() 函数的方法**。*静态对象仍然可以使用 ::atexit() 方法；它们只需要确保内存管理器存在*。如果由于任何原因 `InitializeMemoryManagerQ` 函数返回 false，那么最后一个条件就没有得到满足，结果错误将在日志文件中报告。
+
+虽然如果内存管理器在 s 的声明之前已经激活，这不会成为问题，但值得注意。尽管这个例子完全是 VC++特有的，其他编译器可能会有所不同，或者包含在幕后调用`::atexit()`的额外方法。解决问题的关键是确保内存管理器首先初始化。
+
+### 注意事项
+除了执行内存跟踪所需的额外内存和时间之外，还有几个其他细节需要注意。首先是关于在包含其他文件时可能遇到的语法错误。在某些情况下，由于其他文件重新定义了 new 和 delete 运算符，可能会生成语法错误。在使用 STL 实现时，这一点尤其明显。例如，如果我们先#include "MemoryManager.h"，然后#include ，就会生成各种错误。为了解决这个问题，我们将使用两个额外的头文件：new_on.h 和 new_off.h。这些头文件将简单地#define 和#undefine 之前创建的 new 和 delete 宏。这种方法的优点包括我们通过不强制用户遵守特定的#include 顺序所获得的灵活性，以及避免了在处理预编译头文件时的复杂性。
+```C++
+#include "new_off.h"
+#include <map>
+#include <string>
+#include <ALL_THE_HEADERS_OVERLOADING_THE_NEW/DELETE_OPERATORS>
+#include "new_on.h"
+#include "MemoryManager.h"
+#include "CUstom_Header_files"
+```
+另一个我们需要解决的问题是如何处理那些**重新定义` new` 和 `delete` 运算符的库**。例如，MFC 有自己的系统来处理 `new` 和 `delete` 运算符。因此，我们希望 MFC 类使用它们自己的内存管理器，而非 MFC 的共享游戏代码使用我们的内存管理器。我们可以通过在 `#//2&/'`由 `ClassWizard` 创建的注释后直接插入 `#include "new_off.h"` 头文件来实现这一点。
+```C++
+ifdef _DEBUG
+#include "new_of.h"
+
+```
+这种方法将允许我们保留 MFC 内存管理器的优势，例如在内存泄漏时转储 CC%>rt 派生类，同时仍然为其余代码提供内存管理器。
+最后，请记住正确实现'the setOwnerQ 方法的要求，该方法由 delete 运算符使用。必须认识到，实现比仅记录文件和行号更复杂；我们必须创建一个栈实现。这是由于我们实现 delete 宏的方式造成的
+函数的调用顺序如下所示：
+```txt
+1. new( objects, File2, 1);
+2. new( a, Filel, 1);
+3. setOwner( File2, 2 );
+4. setOwner( Filel, 1 );
+5. delete( a );
+6. delete( objects );
+```
+从前面的列表中应该很明显，当 delete 操作符被调用以释放 objectB 时，如果我们不使用栈实现，我们将不再拥有文件和行号信息。虽然解决方案很简单，但问题并不立即显而易见。
 ## A Built-in Game Profiling Module
 > Author: JeffEvertt, Lithtech, Inc.
 >

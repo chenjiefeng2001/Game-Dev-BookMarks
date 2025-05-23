@@ -10,7 +10,11 @@
     "highTextContrast": false
   },
   "knownTags": {
-    "pragma": 1
+    "2": 1,
+    "pragma": 1,
+    "define": 2,
+    "": 3,
+    "include": 3
   },
   "_version": 3
 }
