@@ -1,3 +1,5 @@
+> 这已经是十分古老的技术了，看看就好，知道怎么写就算成功
+
 ## 第一章 通用编程技术
 ![[Pasted image 20250525081413.png]]
 
@@ -47,3 +49,196 @@
 采用数据驱动方法很容易，但是得到显著的效果缺不容易。当所有的东西都采用数据驱动的时候，你将有无限种发展的可能。
 
 ### 1.1 面向对象的编程与设计技术
+---
+
+
+### 快速数据载入技巧
+> Author: John Olsen
+> Contact: ???
+
+#### 预处理你的数据
+在所有你能做的事情里面，**最重要的是尽可能去预处理你的关卡数据**。
+为了最终获得更短的数据载入时间，需要将你的数据预处理为游戏中的最终使用的格式，只需要做这些计划，你就可以让你的C++类或者C结构的布局更适合高速载入。所有被需要被存储的数据都必须是非静态类成员变量，并且不能将指针保存到数据文件中。
+> 如果你的数据里面需要用到指针，则必须确保在它们被完全载入并正确设置以后才使用，因为指针在载入后通常都指向无效数据。另外一种解决方法是将指针改为句柄或者索引。
+
+#### 保存你的数据
+无论是在游戏中还是在独立的预处理工具中，一旦数据被填充到结构中，你就可以将他们写到硬盘上，对C++来说，你可以使用`this`指针和`sizeof()`来处理类。
+> 对C来说，你只需要结构指针和`sizeof()`来处理结构。需要你确保你没有使用`sizeof(this)`,否则获取的不是结构的大小而是指针的大小。
+
+```C
+#include <stdio.h>
+class GameData{
+public: 
+	bool Save(char *fileName);
+	bool Load(char *fileName);
+	bool BufferedLoad(char *fileName);
+	//Add accessors to get to your game data、
+private:
+	//一次仅打开一个文件
+	static FILE *fileDescriptor;
+	//Data
+	int data[1000];
+};
+bool GameData::Save(char *fileName)
+{
+	fileDescriptor=fopen(fileName,"wb");
+	if(fileDescriptor)
+	{
+		fwrite(this,sizeof(GameData),1,fileDescriptor);\
+		fclose(fileDescriptor);
+		return TRUE;
+	}
+	else
+	{
+	//报告文件出错
+	return FALSE;
+	}
+}
+
+```
+
+#### 使用简单方法载入你的数据
+使用上述方法保存数据，可使应用程序在以后需要载入关卡时，非常轻松读回它们。只需要将数据读回到游戏中和写入它们时相同的结构或类中。
+```C++
+bool GameData::Load(char *fileName)
+{
+	//以读模式打开文件
+	fileDescriptor=fopen(fileName,"rb");
+	if(fileDescriptor)
+	{
+		fread(this,sizeof(GameData),1,fileDescriptor);
+		fclose(fileDescriptor);l
+		//报告读取文件成功
+		return TRUE;
+		}
+		else
+		{
+			//报告读取文件错误
+			return  FLASE;
+			}
+}
+```
+
+#### 更加安全地载入你的数据
+*对于某些游戏控制台硬件，至少有一件非常重要的事情需要注意。一些系统总是要读完当前硬盘扇区*。
+**Memory Stomp**: 如果要直接读取数据到你的结构中，而且结构的长度不是2048字节的倍数，那你就破坏了紧接在那个结构之后的内存数据
+为了避免这种**Memory Stomp**，需要有一个足够大的临时缓冲区来保存填充到2K边界的数据文件。如果需要读取多个文件，不要每次都分配和释放一个新的缓冲区。而是改用一个最大缓冲区，只分配一次，并且在所有的读取操作中重用它。完成所有操作之后再释放。
+```C++
+//检查你的硬件中一次读取块的大小
+//将值放在这个定义中
+#define READ_GREANULARITY 2048
+bool GameData::BufferedLoad(char *fileName)
+{
+	//确认读缓冲区存在足够的空间
+	//如果使用READ_GRANULARITY 的倍数，使用的空间回小一点，但是下面的会稍微快点
+	char *tempBUffer= new char[sizeof(GameData)+READ_GRANULARITY];
+	if(!tempBuffer)
+	{
+		//不能分配，返回错误代码
+		return FALSE;
+	}
+	fileDescriptor= fopen(fileName,"rb");
+	if(fileDescriptor)
+	{
+		fread(tempBuffer,sizeof(GameData),1,fileDescriptor)	;
+		fclose(fileDescriptor);
+		memcpy(this,tempBuffer)；
+		delete tempBuffer;
+		//报告读文件成功
+		return TRUE;	
+	}
+	else 
+	{
+		delete tempBuffer;
+		//报告读文件错误
+		return FALSE;
+	}
+}
+```
+现在已经掌握了高度优化的关卡载入。通过预处理数据，你将节省下将数据转换为可用格式的CPU时间，并且减少了需要读取数据的总量。
+
+### 基于帧的内存分配
+> Author: Steven Ranck
+
+本文主要介绍了一个简单而且极快速的内存分配系统，以防止在游戏关卡中出现内存碎片。
+
+#### 常规内存分配的挑战
+包括`malloc()`和`new`在内的标准内存分配系统最大的问题在于，**内存会变为碎片，从而导致游戏的性能下降，并且可能会导致无法分配一个可用的大内存块**。当然可以使用系统所提供的高级内存管理系统，但是这么做会浪费很多的性能，因为操作系统所提供的内存管理系统并不是十分地高效。并且在一些特殊情况下，没有成熟的内存管理器可以使用。
+#### 基于帧的内存
+解决办法：*采用基于帧1的内存*。基于帧的内存可以消除内存碎片的问题并且使用起来十分快速。
+缺点：采用帧的内存不能用来作为类似`malloc()`和`new`的基于一般目的的内存分配系统。
+采用帧的内存最适合用于游戏和关卡初始化模块。
+
+![[Pasted image 20250602151903.png]]
+
+```C++
+typedef unsigned char u8;
+typedef unsigned int uint;
+#define ALIGNUP(nAddress, nBytes)((((uint)nAddress)+(nBytes)-1)&(~((nBytes)-1)))
+static int _nByteAlignment;//内存对齐的字节数
+static u8 *_pMemoryBlock;//malloc()
+static u8 *_apBaseAndCap[2]; //[0]=基指针，[1]=顶指针
+static u8 *_apFrame[2]; //[0]=低帧指针，[1]=高帧指针
+//必须在游戏初始化时调用一次且最多一次
+//nByteAlignment 必须是2的幂
+//成功返回0，失败返回-1
+int InitFrameMemorySystem(int nSizeInBytes,int nByteAlignment){
+	nSizeInBytesALIGNUP(nSizeInBytes,nByteAlignment);
+	//首先分配我们的内存块
+	_pMemoryBlock = (u8*)malloc (nSizeInBytes+nByteAlignment);
+	if(_pMemoryBlock == 0){
+		//没有足够内存，返回错误标志
+		return 1;
+	}
+	_nByteAlignment =nByteAlignment;
+	//设置基指针
+	_apBaseAndCap[0]=(u8*)ALIGNUP(_pMemoryBlock,nByteAlignment);
+	_apBaseAndCap[1]=(u8*) ALIGNUP(_pMemoryBlock+nSizeInBytes,nByteALignment);
+	//最后，初始化低帧指针和高帧指针
+	_apFrame[0]=_apBaseAndCap[0]
+	_apFrame[1]=_apBaseAndCap[1]
+	return 0;
+}
+void ShutdownFrameMemorySystem(void){
+	free(_pMemoryBlock);
+}
+```
+函数`IntFrameMemorySystem()`在游戏初始化时会被调用一次且最多一次
+传入参数：**帧内存系统管理最大内存数、字节对齐数**
+**所有通过帧内存系统进行分配操作都必须保证内存对齐**[^1]
+
+#### 分配和释放内存
+分配帧内存的工作类似于堆栈操作。一个系统调用从一个或者两个堆中请求一块内存。如果制定了低堆，低堆帧指针将根据分配空间大小而增长，改变的值被返回。低堆指针总统是指向下一个可分配的内存字节。
+另一方方面，如果制定了高堆，高堆指针总是指向最后分配的内存字节。如果两个帧指针彼此交错，则没有足够内存满足需求。
+```C++
+//返回内存块的基指针，或者在没有足够内存时返回0
+//nHeapNum是堆编号：0=低，1=高
+void *AllocFrameMemory(int nBytes,int nHeapNum){
+	u8* pMem;
+	//首先将请求内存对齐：
+	nBytes=ALIGNUP（nBytes,_nByteAlignment);
+	//检查可用内存
+	if(_apFrame[0]+nBytes>_apFrame[1]){
+		//没有足够内存
+		return 0;
+	}
+	//现在完成内存分配操作
+	if(nHeapNum){
+		//从高堆向下分配
+		_apFrame=[1]-=nBytes;
+		pMem= _apFrame[1];
+	}else
+	{
+		//从低堆向上分配
+		pMem=_apFrame[0]'
+		_apFrame[0]+=nBytes;
+	}
+	return (void *) pMem;
+}
+```
+这个函数能非常快速地完成基于帧地内存分配。既然帧内存通过类似堆栈地方式分配，它也需要使用同样的方式释放。
+帧是游戏内从内存系统获取用来释放内存的句柄。内存只能通过帧来释放。帧起到类似系统分配的内存页中书签的作用。
+![[Pasted image 20250602162740.png]]
+
+[^1]:(注意，`ALIGNUP`宏需要`nBytes`参数值为2的幂)
+
