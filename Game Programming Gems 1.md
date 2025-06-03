@@ -239,6 +239,174 @@ void *AllocFrameMemory(int nBytes,int nHeapNum){
 这个函数能非常快速地完成基于帧地内存分配。既然帧内存通过类似堆栈地方式分配，它也需要使用同样的方式释放。
 帧是游戏内从内存系统获取用来释放内存的句柄。内存只能通过帧来释放。帧起到类似系统分配的内存页中书签的作用。
 ![[Pasted image 20250602162740.png]]
+```C++
+typedef struct{
+	u8* pframe;
+	int nHeapNum;
+} Frame_t;
+//返回一个可以在以后用于释放内存的帧句柄
+//nHeapNum是堆的编号：0=低，1=高。
+Frame_t GetFrame(int nHeapNum)
+{
+	Frame_t Frame;
+	Frame.pFrame=_apFrame[nHeapNum];
+	Frame.nHeapNUm= nHeapNum;
+	return Frame;
+}
+```
+对内存系统来说，一个帧数只是一个堆编号和当前堆的帧指针的拷贝。但是对于游戏，它只是一个简单的句柄，`Frame_t`。要释放内存，我们实现了下列的函数
+```C++
+void ReleaseFFrame(Frame_t Frame){
+_apFrame[Frame.nHeapNum]=Frame.pFrame]
+}
+```
+游戏调用`ReleaseFrame()`函数来释放从调用`GetFrame()`函数来获取帧以来分配的所有内存。
 
+#### 结论
+既然基于帧的内存以类似堆栈的方式操作，它就需要帧被以获取顺序相反的顺序释放：**否则内存可能被破坏**。检测释放违反这个条件的方法很简单，可以使用以下函数替换释放帧的函数
+```C++
+void ReleaseFrame(Frame_t Frame0){
+//检测低堆中释放操作的有效性
+assert(Frame.nHeapNUm==1 || (uint)Frame.pFrame<=(uint)_apFrame[0]);
+assert(Frame.nHeapNUm==0 || (uint)Frame.pFrame<=(uint)_apFrame[1]);
+//释放帧
+_apFrame[Frame.nHeapNum]=Frame.pFrame;
+}
+```
+这段代码可以在游戏的调试版本中检测出以不正确的顺序释放帧的企图。还饿可以加入更多的断言以检测其他参数的有效性问题。
+最后需要说的是，对于使用多种无关的内存类型(主内、声音、贴图、图形等)的游戏平台，对于每一种内存类型，我们可以很容易地用一个基于帧内存系统来实现，然后使用主帧将他们联系到一
+起。
+
+
+### 简单快速的位数组
+> Author:Andrew Kirmse
+
+位数组的优势：*速度快，并且能高效组织数据*
+位数组的缺点：容易出错且根机器字长相关
+**我们需要的是一种抽象的位操作，能够带给我们位操作的优点，并且可以避免底层的细节**
+#### 概述
+本文通过三个C++类来实现了位数组。
+基类`BitArray`是一个简单的一维位数组
+子类`BitArray2D`是一个二维位数组
+子类`TwoBitArray`是一个值为0~3的整数数组
+
+> C++STL在位集头文件中包含一个一维位数组。尽管具有丰富的特性，但是大多数实现被隐藏了，并且难以扩充或者修改
+
+#### 位数组
+基类`BitArray`使用起来跟普通C++中的bool类型数组很类似，由一堆0和1组合起来的整数。这些位存储在字节序无关的`long`类型缓冲区中。语法上你可以将`BitArray`以与标准C++数组相同的方式使用，但它还同时具有动态数组的优点和附加的操作符。
+为了保证高性能，`BitArray`在创建时不做任何初始化工作。`Clear()`方法设置所有位为`false`。
+作为优化特性之一，小的`BitArray`可以存储在一个机器字中而无需分配额外的内存。使得这类同样适用于很小的标志集合。
+
+
+#### 其他数组
+`BitArray2D`类似一个二维的`BitArray`。它的大多数行为跟其他的二维数组一样。
+```C
+BitArray2D bits(10,20);
+bit[5][4]=true;
+```
+> 注意，这里的`BitArray2D`数组下表运算符返回一个`ArrayProxy`，这是一个代理类，表示**数组中的单独一行**这个机制被用来模拟C++中双重下标的语法
+
+`BitArray`
+```
+bits2d[5]=bit_array;  //illegal
+bits2d[5].FlipAllBits(); //illiegal
+```
+虽然这样操作没什么大问题，但是会严重增加`ArrayProxy`的复杂度
+实际上`BitArray2D`实现上就是一个包含二维数组所需位数的独立`BitArray`类。但是因为`BitArray2D`不提供相同的公共接口，所以它私有集成`BitArray`类。类似`BitArray`，其所有函数都短小并且内联。
+最后一个类，`TwoBitArray`，提供一个二位值数组。它的实现也是简单地使用包含两倍于`TwoBitArray`元素数量的`BitArray`。
+
+
+### 在线游戏的网络协议
+
+### 最大限度地利用Assert
+> Author: Steve Rabin
+
+本篇如何在对大限度的情况下使用断言
+
+#### Assert 基础
+每个程序员都应该能够"虔诚"地使用Assert宏。Assert宏是一个简单的、无需额外代价的、针对你的假设进行双重检测的工具，它时时刻刻都在保护着你。
+向量归一化是一个非常需要使用断言的例子。
+```C
+void VectorNormalize(Vec* src, Vec* dst)
+{
+	float length;
+	assert(src != 0); //检查Src向量不为空
+	assert(dst != 0); //检查dst向量不为空
+	length =sqrt ((src-> x*src->x)+(src->y*src->y)+(src->z*src->z));
+	assert(length !=0); //检查length不为0(避免被零除异常)
+	dst->x=src->x/length;
+	dst->y=src->y/length;
+	dst->z=src->z/length;
+}
+```
+
+#### Assert技巧#2：嵌入更多的信息
+有时候程序员会在程序运行到一个无法料到的位置时简单地输入`assert(0)`。你可以使用相同的技巧，通过简单的取反字符串导致失败来插入描述字符串。以便提供更多的调试信息。
+#### Assert技巧#3: 使之更好用一些
+前面两个技巧可以通过写一个简单的宏合并到一起。这个宏接受一个参数，第一个参数是需要计算的条件；第二个则是描述字符串。它模拟了前两个技巧，以便于输入和阅读：
+```C
+#define Assert(a,b) assert(a && b)
+//下面两个是新的宏
+assert(src != 0,"VectorNormalize:src vector pointer is NULL");
+assert(0,"VectorNormalize: The code should never get here");
+```
+#### Assert 技巧#4：编写自己的assert宏
+最终，所有人都会使用被真正定制后assert宏。通过编写自己的断言对话框代码可以获得更多的控制并可新增特性。
+标准C语言有一个令人十分讨厌的问题：**它会在调试器里中断代码到`assert.c`文件，而不是让你程序中断言出现的行。通过编写自己的`assert`宏，调试器可以直接中断到输入断言的行。这就避免了位找到你实际感兴趣的代码而所做的毫无意义的堆栈跟踪**。
+```C
+#if defined(_DEBUG)
+extern bool CustomAssertFunction(bool,char *,int ,char *);
+#define Assert(exp,description)
+	if (CustomAssertFunction((int)(exp),description,__LINE__,__FILE__))
+	{_asm{int 3}}
+	#else
+	#define Assert(exp,description)
+	#endif
+```
+上面宏调用`CustomAssertFunction`函数
+> `CustonAssertFunction`函数应该弹出一个显示断言信息的对话框，允许使用者继续或者中断程序的运行。如果使用者选择中断，`CustomAssertFunction`函数应该返回TRUE,调试器应该中断到断言所在行。否则应该返回FALSE，继续运行
+
+#### Assert技巧#5：无价之宝
+一旦有一个自定义的assert宏，你就可以为你的断言对话框增加一个“总是忽略”的选项。它允许你在忽略一个断言后从此不再提示此断言。
+要实现这个特性，每个断言都必须跟踪自己是否被忽略的状态，并且禁止自己在此后被激发。
+以下是一个简单的实现方式：
+```C
+#if defined(_DEBUG)\
+extern bool CustomAssertFunction(bool, char *, int,char *, bool *);
+#define Assert(exp,description) {static bool ignoreAlways=falsel;\
+	if (CustomAssertFunction((int)(exp),description,
+		__LINE__,__FILE__,&ignoreAlways)))
+		{_asm{int 3}}
+		}
+}
+#else
+#define Assert(exp,description)
+#endif
+```
+#### Assert技巧#6:给“超级铁杆”
+对于断言提供了大量重要调试信息，但是并不是所有的错误来源都在断言函数内，真正的错误只会在调用`VectorNormalize`函数的函数中发生。
+如果断言失败时没有运行调试器，断言实际上并没有起到任何的作用。
+一个简单的解决方法是在断言对话框中提供堆栈的信息。
+
+#### Assert技巧#7： 保持简单——复制粘贴断言信息
+确保你给出的断言的信息时能够正确的被复制出来，并且能够被正确解读。
+```C
+if(OpenClipCard(NULL))
+{
+	HGLOBAL hMem;
+	char szAssert[256];
+	char *pMem;
+	
+	sprintf(szAssert,"Put assert into here");
+	hMem=GlobalAlloc(GHND|GMEM_DDESHARE,strlen(szAssert)+1);
+	if(hMem){
+	pMem=(char*)GlobalLock(hMem);
+	EmptyCLipboard();
+	SetClipboardData(CF_TEXT,hMem);
+	
+	}
+	CloseClipboard();
+}
+```
 [^1]:(注意，`ALIGNUP`宏需要`nBytes`参数值为2的幂)
 
