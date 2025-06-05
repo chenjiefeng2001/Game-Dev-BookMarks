@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "14c433868803c6f0",
+        "id": "18966ea8903b1a04",
         "type": "tabs",
         "children": [
           {
-            "id": "027754a03a3d31c9",
+            "id": "97f0775da9291e3e",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -181,10 +181,10 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "027754a03a3d31c9",
+  "active": "97f0775da9291e3e",
   "lastOpenFiles": [
-    "Pasted image 20250602162740.png",
     "Game Programming Gems 1.md",
+    "Pasted image 20250602162740.png",
     "Pasted image 20250602151903.png",
     "Game Engine Architecture解读.md",
     "Game Engine Gems 3.md",

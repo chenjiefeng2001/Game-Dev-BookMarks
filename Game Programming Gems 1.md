@@ -408,5 +408,141 @@ if(OpenClipCard(NULL))
 	CloseClipboard();
 }
 ```
-[^1]:(注意，`ALIGNUP`宏需要`nBytes`参数值为2的幂)
+
+### 实时的游戏内建剖析
+剖析代码是在大部分软件开发中一个十分常见的流程步骤，这一步虽然是常规流程但是十分重要——因为对于游戏来说性能优化指标是一个十分重要的指标，本文主要展示了如何对代码进行剖析，并且如何获取到剖析得结果。
+#### 开始考虑细节
+这个实时剖析器允许你监控你感兴趣的任意代码点或者片段。你只需要在希望剖析的区域开始和结束的时候调用一个对应的函数就行。
+每个样本中都包含以下的东西：
+- 一个`ProfileBegin`
+- 一个`ProfileEnd`
+
+###### 剖析的代价
+从整体上来说，剖析器用来保持对你的样本跟踪时间总量可以忽略不计，特别是当你每次只需要检测少量的几个点时。
+
+#### 剖析器应该告诉你的东西
+一个合格的剖析器应该告诉调试者以下的信息：
+- 样本点的唯一名称
+- 在此样本上耗费的平均、最小和最大帧时间比例
+- 每帧中此样本被调用的次数
+- 此样本点与其他样本点的关系
+剖析器视图智能处理样本并保持对其父子关系的跟踪。
+#### 剖析器的实现
+对于一个给定帧中，每个剖析的样本需要下列信息：
+```C
+typedef struct{
+	bool bValid;    //检测数据是否有效
+	uint iProfileInstances; //ProfileBegin调用次数
+	int iOpenProfiles; //没有相匹配的ProfileEnd调用的ProfileBegin调用次数
+		char szName[256];//样本名称
+		float fStartTime; //当前样本开始时间
+		float fAccumulator; //帧内所有样本统计
+		float fChildrenSampleTime; //所有子样本耗时
+		uint iNumParents; //父样本数
+} ProfileSample;
+```
+我们需要跨越多帧保持样本历史信息，将在下列结果中被存储：
+```c
+typedef struct{
+	bool bValid; //数据是否有效
+	char szName[256]; //样本名称
+	float fAve; //每帧平均时间(百分比)
+	float fMin; //每帧最小时间(百分比)
+	float fMax; //每帧最大时间(百分比)
+} ProfileSampleHistory;
+```
+为了简单和速度考虑，将预分配`ProfileSample(s)`和`ProfileSampleHistory(s)`数组。
+> 预分配数组可以使得不需要去管理有关的内存。在任何样本被采样之前，调用`ProfileInit`来初始化两个数组并记录开始时间。
+
+两个函数会被用来获取时间：
+- `GetTime`:以秒的形式返回系统时间
+- `GeiElapsedTime`：返回上一帧完成以来耗费的所有时间(1/current_frame_time)
+```C
+#define NUM_PROFILE_SAMPLES 50
+ProfileSample g_sample [NUM_PROFILE_SAMPLES];
+ProfileSampleHistory g_history[NUM_PROFILE_SAMPLES];
+float g_startProfile = 0.0f;
+float gendProfile = 0.0f;
+void ProfileInit(void)
+{
+	uint i;
+	for(i=0;i<NUM_PROFILE_SAMPLES;i++){
+		g_samples[i].bValid =false;
+		g_history[i].bValid = false;
+	}
+	g_startProfile = GetTime();
+}
+```
+
+#### ProfileBegin的细节
+我们只需要关注几个变量和函数：
+- ProfileBegin函数：此函数被调用时，它会首先检查是否已经有一个同名的样本存在。如果找得到，那么说明此样本在此帧之前就已经被调用过。
+- iOpenProfiles：被ProfileBegin函数递增，并被ProfileEnd递减。*事实上它被用于跟踪有多少样本开始但没有结束。*
+> 注意这个实现完全不处理递归调用(一个样本在结束前开始多次)
+- iProfileInstance：被ProfileBegin递增以统计样本在帧中被调用的次数。
+
+#### ProfileEnd的细节
+实际上大部分的工作都是在ProfileEnd中完成的。ProfileEnd函数计算结果并评估父子关系
+具体细节：
+1. ProfileEnd在数组中先找到样本。一旦找到样本，结束时间将被记录下来并会递减iOpenProfiles
+2. 代码循环遍历所有样本，统计有多少样本的剖析没有结束(父亲)，并将最近的一个为结束的样本的索引记录下来，
+3. 父节点的数量将被记录到iNumParents。如果有父节点，则样本时间将被在直接父节点的结构中
+
+#### 处理剖析数据的细节
+所有剩下的工作将是处理、格式化并将数据导出到文本缓冲区。这些工作在游戏主循环的最后由ProfileDumpOutputToBuffer函数完成。
+> 注意两个函数ClearTextBuffer和PutTextBuffer被用于将文本到输出缓冲区。你必须提供这些函数。
+
+
+#### 后期增强
+
+#### 将它们组合起来
+
+
+## 数学技巧
+
+### 三角函数的多项式逼近
+本文讲了如何使用算法去快速逼近，从多项式出发到级数，最后到三角函数的级数展开的快速逼近
+在访问一个单独的存储单元的时间内，我们通常能完成大量的计算工作，而且相比任何接近同一程度的算法，这些计算免受量化误差之苦。
+多项式逼近，寻找可以逼近我们想要的函数的一个多项式，然后将$x$的值代入这个多项式并得到一个该函数的近似值。
+计算函数的问题可以转化为寻找一个好的多项式以用于逼近的问题了。这其实是对能给出好结果的“魔术"数——多项式系数的寻找。
+#### 多项式
+多项式就是关于变量(x)的幂次项的和，每一个幂被一个系数相乘。多项式的标准写法如下所示：
+$$
+a[0]+a[1]\times x+a[2] \times x^2 +a[3] \times x^3+\cdots +a[d] \times x^d
+$$
+数$a[i]$被称为多项式的系数，数字$d$是多项式的次数。
+C++语言的表示形式如下所示：
+```C++
+float PolyL::Evaluate(float x)
+{
+	float powx = 1;
+	float sum = 0;
+	for (int n = 0; n<=d; n++)
+	{
+	sum+=a[n] *pow[x];
+	powx *=x;
+	}
+	return sum;
+}
+```
+这是最显然和最直接的应用程序来计算多项式的方法，除此之外还有许多替代方法。**但是这些替代方法在某种方面依赖于多项式的因式分解，因此不推荐替代方法**
+采用因式分解不推荐的原因：
+- 分解因式常常导致对每个系数做除法，这意味着系数对舍入误差是敏感的(尤其是在单精度浮点数中)
+- 用因式分解计算有一个包含所有乘法的关键路径，而用简单的方法计算有一个只包含一个乘法和一个加法的关键路径。故简单方法在CPU上流水线处理更好，这是很重要的。
+
+#### 定义域和值域
+一个函数的定义域式它能够被调用的范围。值域是在它的定义域上的返回值的范围。
+近似多项式以下形式的项的和：
+$$
+a[n] \times pow(x,n)
+$$
+这些项中的每一项本身必须是一个浮点数，所以一定在一个浮点数的范围内，即大约在$0到$$2^{127}$
+如果我们取该多项式的2基对数，得到:
+$$
+log2(a[n] \times pow(x,n))=log 2(a[n])+n\times log 2(x)<127
+$$
+它给出了一系列的$log2(x)$必须服从不等式。
+ 
+
+[^1]:注意，`ALIGNUP`宏需要`nBytes`参数值为2的幂
 
